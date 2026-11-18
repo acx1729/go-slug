@@ -14,15 +14,15 @@ func Example() {
 }
 
 func ExampleGenerator() {
-	g := slug.Generator{Nouns: slug.Food(), Digits: 4, Separator: "_"}
-	fmt.Println(g.New()) // e.g. sunny_mango_2048
+	g := slug.Generator{Nouns: slug.Literature(), Suffix: "?#?#?"}
+	fmt.Println(g.New()) // e.g. brave-odyssey-k7m2q
 }
 
 func ExampleGenerator_seeded() {
 	g := slug.Generator{
 		Adjectives: []string{"clever"},
 		Nouns:      []string{"falcon"},
-		Digits:     2,
+		Suffix:     "##",
 		Rand:       rand.New(rand.NewPCG(78, 0)),
 	}
 	fmt.Println(g.New())
