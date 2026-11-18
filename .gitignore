@@ -13,9 +13,7 @@
 
 # Code coverage profiles and other test artifacts
 *.out
-coverage.html
-coverage.txt
-coverage.xml
+coverage.*
 *.coverprofile
 profile.cov
 
@@ -26,9 +24,9 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
-.env
-
-# Editor/IDE
-# .idea/
-# .vscode/
+# Every file and folder whose name starts with "." (OS, editor and tool
+# state such as .DS_Store, .agents/, .env, .idea/, .vscode/), except this file
+.*
+!.gitignore
+.DS_Store
+.agents/
