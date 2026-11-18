@@ -14,7 +14,7 @@ import (
 func seeded(seed uint64) *rand.Rand { return rand.New(rand.NewPCG(seed, seed)) }
 
 func TestNew(t *testing.T) {
-	shape := regexp.MustCompile(`^[a-z]+-[a-z]+-[0-9]{2}$`)
+	shape := regexp.MustCompile(`^[a-z0-9]+-[a-z0-9]+-[0-9]{2}$`)
 	adjectives, animals := slug.Adjectives(), slug.Animals()
 	for range 1000 {
 		s := slug.New()
@@ -53,9 +53,9 @@ func TestGenerator(t *testing.T) {
 		shape string
 		nouns []string
 	}{
-		{"zero value", slug.Generator{}, `^[a-z]+-[a-z]+$`, slug.Animals()},
-		{"food, four digits, underscore", slug.Generator{Nouns: slug.Food(), Digits: 4, Separator: "_"}, `^[a-z]+_[a-z]+_[0-9]{4}$`, slug.Food()},
-		{"space with dots", slug.Generator{Nouns: slug.Space(), Separator: "."}, `^[a-z]+\.[a-z]+$`, slug.Space()},
+		{"zero value", slug.Generator{}, `^[a-z0-9]+-[a-z0-9]+$`, slug.Animals()},
+		{"food, four digits, underscore", slug.Generator{Nouns: slug.Food(), Digits: 4, Separator: "_"}, `^[a-z0-9]+_[a-z0-9]+_[0-9]{4}$`, slug.Food()},
+		{"space with dots", slug.Generator{Nouns: slug.Space(), Separator: "."}, `^[a-z0-9]+\.[a-z0-9]+$`, slug.Space()},
 		{"own words", slug.Generator{Adjectives: []string{"happy"}, Nouns: []string{"bella", "tommy"}, Digits: 1}, `^happy-(bella|tommy)-[0-9]$`, []string{"bella", "tommy"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -143,6 +143,22 @@ func TestUniqueSeparatorClash(t *testing.T) {
 	}
 	if _, err := (slug.Generator{Separator: "7"}).Unique(1); err != nil {
 		t.Fatalf("a digit separator without digits failed: %v", err)
+	}
+}
+
+// TestManyDigits checks that a digit count far past what an int can count
+// still works: the number of possible slugs is capped, not wrapped.
+func TestManyDigits(t *testing.T) {
+	g := slug.Generator{Digits: 40}
+	got, err := g.Unique(3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shape := regexp.MustCompile(`^[a-z0-9]+-[a-z0-9]+-[0-9]{40}$`)
+	for _, s := range got {
+		if !shape.MatchString(s) {
+			t.Fatalf("Unique gave %q, want 40 digits at the end", s)
+		}
 	}
 }
 

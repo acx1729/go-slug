@@ -60,9 +60,12 @@ func TestWordLists(t *testing.T) {
 }
 
 func TestWordListsAreCopies(t *testing.T) {
-	a := slug.Animals()
-	a[0] = "changed"
-	if slug.Animals()[0] == "changed" {
-		t.Fatal("changing a returned list changed the built-in list")
+	for name, list := range lists {
+		words := list()
+		first := words[0]
+		words[0] = "changed"
+		if list()[0] != first {
+			t.Errorf("changing the slice %s returned changed the built-in list", name)
+		}
 	}
 }
