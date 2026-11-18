@@ -61,46 +61,50 @@ inside the words, because two different slugs could then read the same.
 
 ### Word lists
 
-| Function | Words |
-| --- | --- |
-| `slug.Adjectives()` | clever, sunny, brave, … |
-| `slug.Animals()` | falcon, otter, panda, … |
-| `slug.Food()` | mango, waffle, pretzel, … |
-| `slug.Nature()` | meadow, canyon, willow, … |
-| `slug.Space()` | comet, nebula, orbit, … |
+`slug.Adjectives()` holds the adjectives. Every other function returns nouns,
+and `slug.Animals()` is the default:
 
-Mix them freely, or use your own:
+| Theme | Functions |
+| --- | --- |
+| Everyday | `General`, `Animals`, `Food`, `Plants`, `Nature` |
+| Science | `Astronomy`, `Space`, `Biology`, `Microbiology`, `MolecularBiology`, `Chemistry`, `Physics`, `Math`, `Medicine` |
+| Technology | `ComputerScience`, `Technology` |
+| Culture | `Art`, `Architecture`, `Literature`, `Music`, `History`, `Sports` |
+| World | `Countries`, `Geography`, `Economy` |
+| People | `Scientists` |
+
+Each call returns a fresh copy. Mix the lists freely, or use your own words:
 
 ```go
-all := slices.Concat(slug.Animals(), slug.Food(), slug.Nature(), slug.Space())
-g := slug.Generator{Nouns: all, Digits: 2} // "brave-comet-07"
+science := slices.Concat(slug.Astronomy(), slug.Chemistry(), slug.Physics())
+g := slug.Generator{Nouns: science, Digits: 2} // "quiet-quasar-07"
 ```
 
-With the lists as shipped, `slug.New()` can make about 6.7 million different
+With the lists as shipped, `slug.New()` can make about 106 million different
 slugs (adjectives × animals × 100). Each extra digit multiplies that by ten.
 
 ## Updating the words
 
-The lists are plain text files in [words/](words), one word per line,
-compiled into the package:
+Each list is a Go slice in its own file under
+[internal/words](internal/words), for example `animals.go`:
 
-```
-words/
-  adjectives.txt
-  animals.txt
-  food.txt
-  nature.txt
-  space.txt
+```go
+var Animals = []string{
+	"aardvark",
+	"aardwolf",
+	…
+}
 ```
 
 To add or remove a word, edit its file. Then run `go test ./...`, which names
-the file and line of any word that breaks the rules:
+the list, position and word that break the rules:
 
-- 3 to 10 lower-case letters, a–z only
+- lower-case letters a–z and digits only
 - sorted, with no repeats
-- each word in only one file
 
-A new list is a new file plus a few lines in [words.go](words.go).
+To add a list, add a file in `internal/words`, a function in
+[words.go](words.go), and an entry in `lists` in
+[words_test.go](words_test.go).
 
 Slugs are random, not secret. Don't use them as passwords or tokens.
 
@@ -108,9 +112,17 @@ Slugs are random, not secret. Don't use them as passwords or tokens.
 
 go-slug is a Go rewrite of
 [unique-namer](https://github.com/aziele/unique-namer) by Andrzej Zielezinski,
-a Python package that makes names like `talented-toucan`. The idea of
-adjective-noun names with a random suffix comes from there. The code and the
-word lists in this repository are new.
+a Python package that makes names like `talented-toucan`.
+
+- The Go code is new.
+- The word lists are translated from unique-namer's
+  [data](https://github.com/aziele/unique-namer/tree/main/src/namer/data) and
+  extended with new words, including the `Nature` and `Space` lists.
+- `c++` is written `cpp` and `nadp+` is written `nadp`, so every word is safe
+  in a URL.
+
+unique-namer is MIT-licensed. Its copyright and license notice is in
+[NOTICE](NOTICE).
 
 ## License
 

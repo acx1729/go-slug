@@ -1,69 +1,60 @@
 package slug_test
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
-	"slices"
-	"strings"
 	"testing"
 
 	"github.com/acx1729/go-slug"
 )
 
-// lists maps every file in words/ to the function that returns it.
+// lists names every built-in list. Add a new list here too.
 var lists = map[string]func() []string{
-	"adjectives.txt": slug.Adjectives,
-	"animals.txt":    slug.Animals,
-	"food.txt":       slug.Food,
-	"nature.txt":     slug.Nature,
-	"space.txt":      slug.Space,
+	"Adjectives":       slug.Adjectives,
+	"Animals":          slug.Animals,
+	"Architecture":     slug.Architecture,
+	"Art":              slug.Art,
+	"Astronomy":        slug.Astronomy,
+	"Biology":          slug.Biology,
+	"Chemistry":        slug.Chemistry,
+	"ComputerScience":  slug.ComputerScience,
+	"Countries":        slug.Countries,
+	"Economy":          slug.Economy,
+	"Food":             slug.Food,
+	"General":          slug.General,
+	"Geography":        slug.Geography,
+	"History":          slug.History,
+	"Literature":       slug.Literature,
+	"Math":             slug.Math,
+	"Medicine":         slug.Medicine,
+	"Microbiology":     slug.Microbiology,
+	"MolecularBiology": slug.MolecularBiology,
+	"Music":            slug.Music,
+	"Nature":           slug.Nature,
+	"Physics":          slug.Physics,
+	"Plants":           slug.Plants,
+	"Scientists":       slug.Scientists,
+	"Space":            slug.Space,
+	"Sports":           slug.Sports,
+	"Technology":       slug.Technology,
 }
 
-var wordRule = regexp.MustCompile(`^[a-z]{3,10}$`)
+var wordRule = regexp.MustCompile(`^[a-z0-9]+$`)
 
-// TestWordFiles keeps every word file easy to read and safe to use: one
-// word per line, 3 to 10 lower-case letters a-z, sorted, and each word in
-// only one file.
-func TestWordFiles(t *testing.T) {
-	entries, err := os.ReadDir("words")
-	if err != nil {
-		t.Fatal(err)
-	}
-	owner := map[string]string{} // word -> file it first appeared in
-	for _, e := range entries {
-		path := filepath.Join("words", e.Name())
-		load, ok := lists[e.Name()]
-		if !ok {
-			t.Errorf("%s is not loaded: embed it in words.go and add it to lists in this test", path)
-			continue
+// TestWordLists keeps every list safe to put in a slug: lower-case letters
+// a-z and digits only, sorted, with no repeats.
+func TestWordLists(t *testing.T) {
+	for name, list := range lists {
+		words := list()
+		if len(words) == 0 {
+			t.Errorf("%s is empty", name)
 		}
-		b, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		text := string(b)
-		if !strings.HasSuffix(text, "\n") {
-			t.Errorf("%s: must end with a newline", path)
-		}
-		lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
-		for i, w := range lines {
-			at := fmt.Sprintf("%s:%d", path, i+1)
+		for i, w := range words {
 			switch {
 			case !wordRule.MatchString(w):
-				t.Errorf("%s: %q must be 3 to 10 lower-case letters a-z", at, w)
-			case i > 0 && w <= lines[i-1]:
-				t.Errorf("%s: %q must come after %q (keep the file sorted, no repeats)", at, w, lines[i-1])
+				t.Errorf("%s[%d] %q: use lower-case letters a-z and digits only", name, i, w)
+			case i > 0 && w <= words[i-1]:
+				t.Errorf("%s[%d] %q must come after %q: keep the list sorted, with no repeats", name, i, w, words[i-1])
 			}
-			if first, dup := owner[w]; dup {
-				t.Errorf("%s: %q is already in %s", at, w, first)
-			} else {
-				owner[w] = path
-			}
-		}
-		if got := load(); !slices.Equal(got, lines) {
-			t.Errorf("%s: the loaded list does not match the file", path)
 		}
 	}
 }
