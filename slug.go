@@ -16,6 +16,8 @@ import (
 	"math"
 	"math/rand/v2"
 	"strings"
+
+	"github.com/acx1729/go-slug/internal/words"
 )
 
 // std makes the slugs returned by New and Unique.
@@ -103,10 +105,10 @@ func (g Generator) resolve() (adjs, nouns []string, sep string) {
 	}
 	adjs, nouns, sep = g.Adjectives, g.Nouns, g.Separator
 	if len(adjs) == 0 {
-		adjs = adjectives
+		adjs = words.Adjectives
 	}
 	if len(nouns) == 0 {
-		nouns = animals
+		nouns = words.Animals
 	}
 	if sep == "" {
 		sep = "-"
