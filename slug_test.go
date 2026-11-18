@@ -37,7 +37,7 @@ func TestCleverFalcon89(t *testing.T) {
 	if !slices.Contains(slug.Animals(), "falcon") {
 		t.Fatal(`"falcon" is not a built-in animal`)
 	}
-	g := slug.Generator{Adjectives: []string{"clever"}, Nouns: []string{"falcon"}, Digits: 2, Rand: seeded(1)}
+	g := slug.Generator{Adjectives: []string{"clever"}, Nouns: []string{"falcon"}, Suffix: "##", Rand: seeded(1)}
 	for range 10_000 {
 		if g.New() == "clever-falcon-89" {
 			return
@@ -54,9 +54,9 @@ func TestGenerator(t *testing.T) {
 		nouns []string
 	}{
 		{"zero value", slug.Generator{}, `^[a-z0-9]+-[a-z0-9]+$`, slug.Animals()},
-		{"food, four digits, underscore", slug.Generator{Nouns: slug.Food(), Digits: 4, Separator: "_"}, `^[a-z0-9]+_[a-z0-9]+_[0-9]{4}$`, slug.Food()},
+		{"food, four digits, underscore", slug.Generator{Nouns: slug.Food(), Suffix: "####", Separator: "_"}, `^[a-z0-9]+_[a-z0-9]+_[0-9]{4}$`, slug.Food()},
 		{"space with dots", slug.Generator{Nouns: slug.Space(), Separator: "."}, `^[a-z0-9]+\.[a-z0-9]+$`, slug.Space()},
-		{"own words", slug.Generator{Adjectives: []string{"happy"}, Nouns: []string{"bella", "tommy"}, Digits: 1}, `^happy-(bella|tommy)-[0-9]$`, []string{"bella", "tommy"}},
+		{"own words", slug.Generator{Adjectives: []string{"happy"}, Nouns: []string{"bella", "tommy"}, Suffix: "#"}, `^happy-(bella|tommy)-[0-9]$`, []string{"bella", "tommy"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			shape := regexp.MustCompile(tc.shape)
@@ -77,18 +77,46 @@ func TestGenerator(t *testing.T) {
 	}
 }
 
-func TestNegativeDigitsPanics(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("Digits: -1 did not panic")
-		}
-	}()
-	slug.Generator{Digits: -1}.New()
+// TestSuffix checks each symbol lands where the template puts it.
+func TestSuffix(t *testing.T) {
+	for suffix, ending := range map[string]string{
+		"##":    `[0-9]{2}`,
+		"?#?#?": `[a-z][0-9][a-z][0-9][a-z]`,
+		"??###": `[a-z]{2}[0-9]{3}`,
+		"?":     `[a-z]`,
+	} {
+		t.Run(suffix, func(t *testing.T) {
+			shape := regexp.MustCompile(`^[a-z0-9]+-[a-z0-9]+-` + ending + `$`)
+			g := slug.Generator{Suffix: suffix}
+			for range 500 {
+				if s := g.New(); !shape.MatchString(s) {
+					t.Fatalf("Suffix %q made %q, want an ending like %s", suffix, s, ending)
+				}
+			}
+		})
+	}
+}
+
+func TestBadSuffix(t *testing.T) {
+	for _, suffix := range []string{"#x", "*", "[a-z]", "# ", "#é", "X"} {
+		t.Run(suffix, func(t *testing.T) {
+			g := slug.Generator{Suffix: suffix}
+			if _, err := g.Unique(1); err == nil {
+				t.Fatalf("Unique with Suffix %q did not fail", suffix)
+			}
+			defer func() {
+				if recover() == nil {
+					t.Fatalf("New with Suffix %q did not panic", suffix)
+				}
+			}()
+			g.New()
+		})
+	}
 }
 
 func TestRandIsRepeatable(t *testing.T) {
-	a := slug.Generator{Digits: 4, Rand: seeded(42)}
-	b := slug.Generator{Digits: 4, Rand: seeded(42)}
+	a := slug.Generator{Suffix: "?#?#?", Rand: seeded(42)}
+	b := slug.Generator{Suffix: "?#?#?", Rand: seeded(42)}
 	for range 100 {
 		if x, y := a.New(), b.New(); x != y {
 			t.Fatalf("same seed gave %q and %q", x, y)
@@ -123,6 +151,19 @@ func TestUnique(t *testing.T) {
 	if _, err := repeats.Unique(2); err == nil {
 		t.Fatal("repeated words were counted twice")
 	}
+
+	// One word each and a one-letter ending: exactly 26 slugs exist.
+	letters := slug.Generator{Adjectives: []string{"red"}, Nouns: []string{"cat"}, Suffix: "?"}
+	all, err := letters.Unique(26)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 26 || all[0][:len("red-cat-")] != "red-cat-" {
+		t.Fatalf("Unique(26) = %v, want red-cat-a … red-cat-z", all)
+	}
+	if _, err := letters.Unique(27); err == nil {
+		t.Fatal("Unique(27) from 26 possible slugs did not fail")
+	}
 }
 
 func TestUniqueSeparatorClash(t *testing.T) {
@@ -133,7 +174,8 @@ func TestUniqueSeparatorClash(t *testing.T) {
 		{"in an adjective", slug.Generator{Adjectives: []string{"a-b"}, Nouns: []string{"cat"}}},
 		{"in a noun", slug.Generator{Nouns: []string{"x_y"}, Separator: "_"}},
 		{"a letter of the words", slug.Generator{Separator: "e"}},
-		{"a digit", slug.Generator{Digits: 2, Separator: "0"}},
+		{"a digit of the ending", slug.Generator{Suffix: "##", Separator: "0"}},
+		{"a letter of the ending", slug.Generator{Adjectives: []string{"red"}, Nouns: []string{"cat"}, Suffix: "?", Separator: "z"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := tc.g.Unique(1); err == nil {
@@ -141,15 +183,15 @@ func TestUniqueSeparatorClash(t *testing.T) {
 			}
 		})
 	}
-	if _, err := (slug.Generator{Separator: "7"}).Unique(1); err != nil {
-		t.Fatalf("a digit separator without digits failed: %v", err)
+	if _, err := (slug.Generator{Separator: "7", Suffix: "??"}).Unique(1); err != nil {
+		t.Fatalf("a digit separator with a letters-only ending failed: %v", err)
 	}
 }
 
-// TestManyDigits checks that a digit count far past what an int can count
-// still works: the number of possible slugs is capped, not wrapped.
-func TestManyDigits(t *testing.T) {
-	g := slug.Generator{Digits: 40}
+// TestLongSuffix checks that an ending far past what an int can count still
+// works: the number of possible slugs is capped, not wrapped.
+func TestLongSuffix(t *testing.T) {
+	g := slug.Generator{Suffix: strings.Repeat("#", 40)}
 	got, err := g.Unique(3)
 	if err != nil {
 		t.Fatal(err)
@@ -181,7 +223,7 @@ func TestUniqueDefault(t *testing.T) {
 
 // TestConcurrentUse is meaningful under -race.
 func TestConcurrentUse(t *testing.T) {
-	g := slug.Generator{Nouns: slug.Nature(), Digits: 3}
+	g := slug.Generator{Nouns: slug.Nature(), Suffix: "?#?"}
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Add(1)

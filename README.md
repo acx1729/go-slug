@@ -32,22 +32,41 @@ A `Generator` is a plain struct. Every field is optional:
 
 ```go
 g := slug.Generator{
-	Nouns:     slug.Food(),
-	Digits:    4,
-	Separator: "_",
+	Nouns:  slug.Literature(),
+	Suffix: "?#?#?",
 }
-g.New() // "sunny_mango_2048"
+g.New() // "brave-odyssey-k7m2q"
 ```
 
 | Field | Empty means | Example |
 | --- | --- | --- |
 | `Adjectives` | `slug.Adjectives()` | `[]string{"happy", "sleepy"}` |
 | `Nouns` | `slug.Animals()` | `slug.Space()` |
-| `Digits` | no digits | `4` → `-0423` |
+| `Suffix` | no ending | `"?#?#?"` → `-k7m2q` |
 | `Separator` | `"-"` | `"_"` |
 | `Rand` | the global random source | `rand.New(rand.NewPCG(1, 2))` for repeatable output |
 
 The zero `Generator{}` makes slugs like `clever-falcon`.
+
+### The ending
+
+`Suffix` is a template with one symbol per character:
+
+| Symbol | Becomes |
+| --- | --- |
+| `#` | a random digit, 0–9 |
+| `?` | a random letter, a–z |
+
+```go
+slug.Generator{Suffix: "##"}    // brave-falcon-89   (what slug.New uses)
+slug.Generator{Suffix: "?#?#?"} // brave-falcon-k7m2q
+slug.Generator{Suffix: "??###"} // brave-falcon-km482
+```
+
+`#` and `?` mean the same as in gofakeit's `Numerify` and `Lexify`. Any other
+character is an error: `New` panics, the way `regexp.MustCompile` does, and
+`Unique` returns the error. Put fixed text outside the template, for example
+`"run-" + g.New()`.
 
 ### No repeats
 
@@ -57,7 +76,8 @@ slugs, err := slug.Unique(100) // 100 different slugs
 
 `Unique` fails instead of returning a repeat. That happens when you ask for
 more slugs than the generator can make, or when the separator also appears
-inside the words, because two different slugs could then read the same.
+inside the words or the ending, because two different slugs could then read
+the same.
 
 ### Word lists
 
@@ -77,11 +97,12 @@ Each call returns a fresh copy. Mix the lists freely, or use your own words:
 
 ```go
 science := slices.Concat(slug.Astronomy(), slug.Chemistry(), slug.Physics())
-g := slug.Generator{Nouns: science, Digits: 2} // "quiet-quasar-07"
+g := slug.Generator{Nouns: science, Suffix: "##"} // "quiet-quasar-07"
 ```
 
 With the lists as shipped, `slug.New()` can make about 106 million different
-slugs (adjectives × animals × 100). Each extra digit multiplies that by ten.
+slugs (adjectives × animals × 100). Each `#` in the ending multiplies the
+count by 10, and each `?` by 26.
 
 ## Updating the words
 
